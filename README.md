@@ -2,10 +2,13 @@
 
 The save editor will only work for the said game version. Do *NOT* use it for the `original D-OS` or `D-OS 2`.
 
+This version is a branch off of https://github.com/AnthonyZJiang/D-OS-Save-Editor. 
 
-For use and discussions, please head over to: [Larian Forum](http://larian.com/forums/ubbthreads.php?ubb=showflat&Number=644516#Post644516)
+Changes so far:
+1. Added ability to add new items into character inventories.
 
-Latest release: [alpha preview](https://github.com/tmxkn1/D-OS-Save-Editor/releases)
+Latest release: [alpha preview]()
 
 ----
 Credit goes to Norbyte and his [LSTools](https://github.com/Norbyte/lslib).
+Credit to https://github.com/AnthonyZJiang for the original release
