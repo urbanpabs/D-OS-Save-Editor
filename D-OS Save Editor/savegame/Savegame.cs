@@ -1,4 +1,7 @@
-﻿using System;
+﻿using LSLib.LS;
+using LSLib.LS.Enums;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -7,9 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Xml;
-using LSLib.LS;
-using LSLib.LS.Enums;
-using Newtonsoft.Json;
+using System.Xml.Linq;
 
 namespace D_OS_Save_Editor
 {
@@ -57,6 +58,7 @@ namespace D_OS_Save_Editor
 
         public async Task WriteEditsToLsxAsync(IProgress<string> progress)
         {
+            
             // update progress
             progress.Report("Loading package.");
             await Task.Delay(1);
@@ -73,6 +75,8 @@ namespace D_OS_Save_Editor
             progress.Report("Saving package.");
             await Task.Delay(1);
             doc.Save(UnpackDirectory + Path.DirectorySeparatorChar + "globals.lsx");
+            return;
+
         }
 
         /// <summary>

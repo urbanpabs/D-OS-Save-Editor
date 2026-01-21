@@ -40,7 +40,10 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition/></Grid.RowDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
             <TextBlock Text="Filter:"/>
             <TextBox Grid.Column="1" x:Name="SearchTextBox" Uid="SearchText" Margin="10,0,20,0" VerticalAlignment="Top" HorizontalAlignment="Stretch" Width="Auto" TextChanged="SearchTextBox_OnTextChanged"/>
             <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="Use space to separate" FontSize="10" FontStyle="Italic"/>
@@ -143,6 +146,6 @@
                 </Grid>
             </GroupBox>
         </WrapPanel>
-        <Button Grid.Column="1" Grid.Row="3" HorizontalAlignment="Right" Content="Apply changes" Padding="10,2" VerticalAlignment="Bottom" Margin="10" Click="ApplyChangesButton_OnClick"/>
+        <Button Grid.Column="1" Grid.Row="3" HorizontalAlignment="Right" Content="Apply changes" Padding="10,2" VerticalAlignment="Bottom" Margin="0,0,92,4" Click="ApplyChangesButton_OnClick"/>
     </Grid>
 </UserControl>

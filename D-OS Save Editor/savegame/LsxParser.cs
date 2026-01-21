@@ -1,13 +1,22 @@
-﻿using System;
+﻿using D_OS_Save_Editor.Properties;
+using D_OS_Save_Editor.savegame;
+using LSLib.Granny;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Xml;
+using System.Xml.Linq;
+using System.Xml.Serialization;
+using System.Xml.XPath;
 
 namespace D_OS_Save_Editor
 {
+
     [SuppressMessage("ReSharper", "PossibleNullReferenceException")]
     [SuppressMessage("ReSharper", "AssignNullToNotNullAttribute")]
     public class LsxParser
@@ -342,7 +351,8 @@ namespace D_OS_Save_Editor
             if (playerData == null)
                 throw new XmlException("Unable to find any player data in the savegame.");
 
-            Parallel.For(0, playerData.Count, i =>
+            for (int i = 0; i < players.Length; i++)
+            //Parallel.For(0, playerData.Count, parallelOptions, i =>
             {
                 playerData[i].ParentNode.ParentNode.SelectSingleNode("attribute [@id='MaxVitalityPatchCheck']")
                     .Attributes[1].Value = players[i].MaxVitalityPatchCheck;
@@ -395,32 +405,32 @@ namespace D_OS_Save_Editor
 
                 // write item changes
                 doc = WriteItemChanges(doc, players[i]);
-            });
-
+                //});
+            }
             return doc;
         }
+
 
         public static XmlDocument WriteItemChanges(XmlDocument doc, Player player)
         {
             // get all items belong to this player
             // find item data
             var inventoryData = doc.DocumentElement.SelectNodes($"//attribute [@id='Parent'] [@value='{player.InventoryId}']");
-
+            
             foreach (var ic in player.ItemChanges)
             {
                 try
                 {
-                    if (ic.Value.ChangeType == ChangeType.Add)
-                    {
-
-                    }
-                    else if (ic.Value.ChangeType == ChangeType.Delete)
+                    
+                    if (ic.Value.ChangeType == ChangeType.Delete)
                     {
 
                     }
                     else if (ic.Value.ChangeType == ChangeType.Modify)
                     {
                         var itemNode = inventoryData[ic.Value.Item.ItemXmlNodeIdx].ParentNode;
+
+                        //Console.WriteLine(itemNode.OuterXml);
 
                         var allowedChanges = ic.Value.Item.GetAllowedChangeType();
                         if (allowedChanges.Contains(nameof(ic.Value.Item.Amount)))
@@ -517,8 +527,77 @@ namespace D_OS_Save_Editor
                 }
             }
 
+            foreach (var ic in player.ItemChanges)
+            {
+
+                if (ic.Value.ChangeType == ChangeType.Add)
+                {
+                    string mapKey = ic.Value.ItemTemplate.TemplateKey;
+                    string stats = ic.Value.ItemTemplate.Stats;
+                    string empSlot = ic.Key.ToString();
+                    string amount = ic.Value.ItemTemplate.Amount.ToString();
+
+                    string rawXml = $@"<node id=""Item"">
+	                                        <attribute id=""Translate"" value=""0 0 0"" type=""12"" />
+	                                        <attribute id=""Flags"" value=""33240"" type=""5"" />
+	                                        <attribute id=""Level"" value="""" type=""22"" />
+	                                        <attribute id=""Rotate"" value="" 1.00  0.00  0.00 &#xD;&#xA; 0.00  1.00  0.00 &#xD;&#xA; 0.00  0.00  1.00 &#xD;&#xA;"" type=""15"" />
+	                                        <attribute id=""Scale"" value=""1"" type=""6"" />
+	                                        <attribute id=""Global"" value=""True"" type=""19"" />
+	                                        <attribute id=""Velocity"" value=""0 0 0"" type=""12"" />
+	                                        <attribute id=""GoldValueOverwrite"" value=""-1"" type=""4"" />
+	                                        <attribute id=""UnsoldGenerated"" value=""True"" type=""19"" />
+	                                        <attribute id=""IsKey"" value=""False"" type=""19"" />
+	                                        <attribute id=""TreasureGenerated"" value=""False"" type=""19"" />
+	                                        <attribute id=""CurrentTemplate"" value=""{mapKey}"" type=""22"" />
+	                                        <attribute id=""CurrentTemplateType"" value=""0"" type=""1"" />
+	                                        <attribute id=""OriginalTemplate"" value=""{mapKey}"" type=""22"" />
+	                                        <attribute id=""OriginalTemplateType"" value=""0"" type=""1"" />
+	                                        <attribute id=""Stats"" value=""{stats}"" type=""22"" />
+	                                        <attribute id=""IsGenerated"" value=""False"" type=""19"" />
+	                                        <attribute id=""Inventory"" value=""0"" type=""5"" />
+	                                        <attribute id=""Parent"" value=""{player.InventoryId}"" type=""5"" />
+	                                        <attribute id=""Slot"" value=""{empSlot}"" type=""3"" />
+	                                        <attribute id=""Amount"" value=""{amount}"" type=""4"" />
+	                                        <attribute id=""Key"" value="""" type=""22"" />
+	                                        <attribute id=""LockLevel"" value=""1"" type=""4"" />
+	                                        <attribute id=""SurfaceCheckTimer"" value=""0"" type=""6"" />
+	                                        <attribute id=""Vitality"" value=""-1"" type=""4"" />
+	                                        <attribute id=""LifeTime"" value=""0"" type=""6"" />
+	                                        <attribute id=""owner"" value=""67174791"" type=""5"" />
+	                                        <attribute id=""ItemType"" value=""Common"" type=""22"" />
+	                                        <attribute id=""MaxVitalityPatchCheck"" value=""-1"" type=""4"" />
+	                                        <children>
+		                                        <node id=""ItemMachine"" /><node id=""VariableManager"" />
+		                                        <node id=""StatusManager"" />
+	                                        </children>
+                                        </node>";
+                    
+                    XmlNode targetChildren = doc.SelectSingleNode("//region[@id='Items']/node[@id='Items']/children/node[@id='ItemFactory']/children/node[@id='Items']/children");
+
+                    XmlNodeList filteredItems = targetChildren.SelectNodes(
+                                                    $"node[@id='Item' and attribute[@id='Parent' and @value='{player.InventoryId}']]"
+                                                );
+
+                    XmlNode lastFiltered = filteredItems.Count > 0 ? filteredItems[filteredItems.Count - 1] : null;
+
+                    XmlDocument temp = new XmlDocument();
+                    temp.LoadXml(rawXml);
+
+                    XmlNode imported = doc.ImportNode(temp.DocumentElement, true);
+
+                    if (lastFiltered != null && imported != null)
+                    {
+                        lastFiltered.ParentNode.InsertAfter(imported, lastFiltered);
+                    }
+
+                }
+
+            }
+
             return doc;
         }
+        
         #endregion
     }
 

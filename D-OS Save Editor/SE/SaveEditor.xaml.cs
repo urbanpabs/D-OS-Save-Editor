@@ -1,10 +1,16 @@
-﻿using System;
+﻿using LSLib.Granny.Model;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Xml;
+using System.Xml.Linq;
+using System.Xml.XPath;
 
 namespace D_OS_Save_Editor
 {
@@ -16,11 +22,12 @@ namespace D_OS_Save_Editor
         private Savegame Savegame { get; set; }
         private Player[] EditingPlayers { get; set; }
 
+        private List<ItemTemplate> GameItems { get; set; }
 
         public SaveEditor(string jsonFile)
         {
             InitializeComponent();
-
+            GameItems = LoadNewItems();
             Savegame = Savegame.GetSavegameFromJson(jsonFile);
             // make a copy of players
             try
@@ -38,15 +45,121 @@ namespace D_OS_Save_Editor
             {
                 PlayerSelectionComboBox.Items.Add(p.Name);
             }
-
+            
             PlayerSelectionComboBox.SelectedIndex = 0;
         }
+
+        private List<ItemTemplate> LoadNewItems()
+        {
+            List<ItemTemplate> result = new List<ItemTemplate>();
+            string path = Path.Combine(AppContext.BaseDirectory, "ItemTemplates");
+            
+            if (Directory.Exists(path))
+            {
+                foreach (var file in Directory.EnumerateFiles(path, "*.lsx"))
+                {
+                    XElement items = XElement.Load(file);
+                    IEnumerable<XElement> node = items.XPathSelectElement("//node[@id='root']//children").Elements();
+
+                    foreach (var itemToAdd in node)
+                    {
+
+                        if (
+                            (GetAttr(itemToAdd, "CanBePickedUp") == "True")  
+                            & !(GetAttr(itemToAdd, "Stats") == null)
+                            & !(GetAttr(itemToAdd, "MapKey") == null)
+                            ) 
+                        {
+                            string name = GetAttr(itemToAdd, "Name");
+                            string stats = GetAttr(itemToAdd, "Stats");
+                            string description = GetAttr(itemToAdd, "Description");
+                            string templateKey = GetAttr(itemToAdd, "MapKey");
+                            string maxStack = GetAttr(itemToAdd, "maxStackAmount");
+
+                            ItemTemplate item = new ItemTemplate(name, description, templateKey, maxStack, stats);
+
+                            if (DataTable.GoldNames.Contains(item.Name.ToLower()))
+                                item.ItemSort = ItemSortType.Gold;
+                            else
+                            {
+                                var nameParts = item.Name.ToLower().Split('_');
+
+                                if (nameParts[0] == "wpn" &&
+                                    DataTable.ArrowTypeNames.Contains(nameParts[1]))
+                                    item.ItemSort = ItemSortType.Arrow;
+                                else
+                                    switch (nameParts[0])
+                                    {
+                                        case "item":
+                                            item.ItemSort = ItemSortType.Item;
+                                            break;
+                                        case "potion":
+                                            item.ItemSort = ItemSortType.Potion;
+                                            break;
+                                        case "arm":
+                                            item.ItemSort = ItemSortType.Armor;
+                                            break;
+                                        case "wpn":
+                                            item.ItemSort = ItemSortType.Weapon;
+                                            break;
+                                        case "skillbook":
+                                            item.ItemSort = ItemSortType.Skillbook;
+                                            break;
+                                        case "book_skill":
+                                            item.ItemSort = ItemSortType.Skillbook;
+                                            break;
+                                        case "scroll":
+                                            item.ItemSort = ItemSortType.Scroll;
+                                            break;
+                                        case "grn":
+                                            item.ItemSort = ItemSortType.Granade;
+                                            break;
+                                        case "food":
+                                            item.ItemSort = ItemSortType.Food;
+                                            break;
+                                        case "fur":
+                                            item.ItemSort = ItemSortType.Furniture;
+                                            break;
+                                        case "loot":
+                                            item.ItemSort = ItemSortType.Loot;
+                                            break;
+                                        case "quest":
+                                            item.ItemSort = ItemSortType.Quest;
+                                            break;
+                                        case "tool":
+                                            item.ItemSort = ItemSortType.Tool;
+                                            break;
+                                        case "unique":
+                                            item.ItemSort = ItemSortType.Unique;
+                                            break;
+                                        case "book":
+                                            item.ItemSort = ItemSortType.Book;
+                                            break;
+                                        default:
+                                            item.ItemSort = ItemSortType.Other;
+                                            break;
+                                    }
+                            }
+                            result.Add(item); 
+                        }
+
+                    }
+
+                }
+            }
+
+            return result;
+        }
+        string GetAttr(XElement el, string id) =>
+          el.Descendants("attribute")
+            .FirstOrDefault(a => (string)a.Attribute("id") == id)?
+            .Attribute("value")?.Value;
 
         public SaveEditor(Savegame savegame)
         {
             InitializeComponent();
             Savegame = savegame;
-
+            GameItems = LoadNewItems();
             Title = $"D-OS Save Editor: {savegame.SavegameName.Substring(0,savegame.SavegameName.Length-4)}";
 
             // make a copy of players
@@ -76,6 +189,9 @@ namespace D_OS_Save_Editor
             InventoryTab.Player = EditingPlayers[id];
             TraitsTab.Player = EditingPlayers[id];
             TalentTab.Player = EditingPlayers[id];
+            AddItemTab.NewItems = GameItems;
+            AddItemTab.Player = EditingPlayers[id];
+            
 
             if (EditingPlayers[id].Name == "Henchman")
             {
@@ -100,7 +216,7 @@ namespace D_OS_Save_Editor
                 TalentTab.SaveEdits();
 
                 // progress indicator
-                var progressIndicator = new ProgressIndicator("Saving", false) { Owner = Application.Current.MainWindow };
+                var progressIndicator = new ProgressIndicator("Saving", false) { Owner = Application.Current.MainWindow};
                 var progress = new Progress<string>();
                 progress.ProgressChanged += (o, s) =>
                 {
@@ -139,6 +255,7 @@ namespace D_OS_Save_Editor
             StatsTab.UpdateForm();
             AbilitiesTab.UpdateForm();
             InventoryTab.UpdateForm();
+            AddItemTab.UpdateForm();
         }
 
         private void SaveEditor_OnClosed(object sender, EventArgs e)

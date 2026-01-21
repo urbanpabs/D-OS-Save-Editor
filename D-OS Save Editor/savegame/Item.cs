@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Xml;
 
@@ -68,6 +69,11 @@ namespace D_OS_Save_Editor
         }
 
         /// <summary>
+        /// Xml node name: Description of the item (Xml attribute id: Description)
+        /// </summary>
+        public string Description { get; set; }
+
+        /// <summary>
         /// Xml node name: Indicates if the item is a key or not.
         /// </summary>
         public string IsKey
@@ -95,7 +101,7 @@ namespace D_OS_Save_Editor
             set
             {
                 if (!XmlUtilities.IsLong(value))
-                    throw new XmlValidationException("Parenet", value);
+                    throw new XmlValidationException("Parent", value);
                 _parent = value;
             }
         }
@@ -503,6 +509,7 @@ namespace D_OS_Save_Editor
     public class ItemChange
     {
         public Item Item { get; }
+        public ItemTemplate ItemTemplate { get; }
         public ChangeType ChangeType { get;}
 
         public ItemChange() { }
@@ -512,6 +519,86 @@ namespace D_OS_Save_Editor
             Item = item.DeepClone();
             ChangeType = changeType;
         }
+
+        public ItemChange(ItemTemplate item, ChangeType changeType)
+        {
+            ItemTemplate = item.DeepClone();
+            ChangeType = changeType;
+        }
+
+
+
+    }
+
+    public class ItemTemplate : INotifyPropertyChanged
+    {
+        protected void OnPropertyChanged(string name)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        public string Name { get; set; }
+        public string Stats { get; set; }
+        public string Description { get; set; }
+        public string TemplateKey { get; set; }
+        public string MaxStack { get; set; }
+        public ItemSortType ItemSort { get; set; }
+        //public int Amount { get; set; }
+
+        private int _amount;
+
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        public int Amount
+        {
+            get => _amount;
+            set
+            {
+                if (!int.TryParse(MaxStack, out int max))
+                    _amount = 1;
+                else if (value == _amount)
+                    return;
+                else
+                    _amount = Math.Min(Math.Max(value, 1), max);
+                
+                // optionally notify UI
+                OnPropertyChanged(nameof(Amount));
+            }
+        }
+
+        public ItemTemplate(string name, string description, string TemplateKey, string maxStack, string stats) {
+            this.Name = name;
+            this.Description = description;
+            this.TemplateKey = TemplateKey;
+            this.MaxStack = maxStack;
+            this.Stats = stats;
+            this.Amount = 0;
+        }
+
+        public ItemTemplate(string name, string description, string TemplateKey, string maxStack, string stats, int amount)
+        {
+            this.Name = name;
+            this.Description = description;
+            this.TemplateKey = TemplateKey;
+            this.MaxStack = maxStack;
+            this.Stats = stats;
+            this.Amount = amount;
+        }
+
+        public ItemTemplate DeepClone() {
+            try
+            {
+                var item = (ItemTemplate)MemberwiseClone();
+                return item;
+            }
+
+            catch (NullReferenceException ex)
+
+            {
+                throw new ObjectNullException(ex, "Cannot clone item, because one or more list/dictionary object is null.", this);
+            }
+
+            
+
+        }
+
     }
 
     public class ItemParserException : Exception
