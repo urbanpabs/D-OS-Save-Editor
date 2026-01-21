@@ -93,7 +93,7 @@ namespace D_OS_Save_Editor
         {
             Clipboard.SetText($"{ErrorMessage}\n\n{MainWindow.Version}");
             Process.Start(
-                @"https://docs.google.com/forms/d/e/1FAIpQLSeUeKYdV8InQslbvCvA1rmffJ5t1ieond4W6hpUHkHTH7I7dg/viewform?usp=pp_url&entry.1687355392=Error+report");
+                @"https://forms.gle/8hiaHnwEhBpzYnNX7");
             Close();
         }
 
