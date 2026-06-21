@@ -270,6 +270,9 @@ namespace D_OS_Save_Editor
             {
                 s += nameof(ItemRarity);
                 s += nameof(Generation);
+                // Allow durability editing on equipment even before a Stats node exists;
+                // it is synthesized on apply / write (see ApplyChanges and WriteItemChanges).
+                s += nameof(Stats);
             }
 
             if (ItemSort == ItemSortType.Potion ||
@@ -290,10 +293,14 @@ namespace D_OS_Save_Editor
             if (Generation != null)
             {
                 s += nameof(Generation);
+                // generated equipment that wasn't name-classified as Armor/Weapon can still
+                // have its rarity edited (the ItemType attribute exists on every item).
+                if (!s.Contains(nameof(ItemRarity)))
+                    s += nameof(ItemRarity);
             }
 
             // stats
-            if (Stats != null)
+            if (Stats != null && !s.Contains(nameof(Stats)))
             {
                 s += nameof(Stats);
             }
@@ -540,6 +547,10 @@ namespace D_OS_Save_Editor
         public string TemplateKey { get; set; }
         public string MaxStack { get; set; }
         public ItemSortType ItemSort { get; set; }
+        /// <summary>
+        /// Rarity to write for a freshly added item (ItemType attribute). Defaults to Common.
+        /// </summary>
+        public Item.ItemRarityType ItemRarity { get; set; } = Item.ItemRarityType.Common;
         //public int Amount { get; set; }
 
         private int _amount;

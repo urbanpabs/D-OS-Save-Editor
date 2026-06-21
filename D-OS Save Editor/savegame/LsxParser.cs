@@ -503,9 +503,45 @@ namespace D_OS_Save_Editor
 
                         // check if has stats
                         var statsNode = itemNode.SelectSingleNode("children/node [@id='Stats']");
-                        if (!allowedChanges.Contains(nameof(ic.Value.Item.Stats)) || statsNode == null ||
+                        if (!allowedChanges.Contains(nameof(ic.Value.Item.Stats)) ||
                             ic.Value.Item.Stats == null)
                             continue;
+
+                        // The item may not have a Stats node yet (e.g. when adding the first
+                        // modifier/durability to equipment that had none). Create one matching
+                        // the verified in-game schema before writing values into it.
+                        if (statsNode == null)
+                        {
+                            var statsFrag = doc.CreateDocumentFragment();
+                            statsFrag.InnerXml =
+                                "<node id=\"Stats\">" +
+                                "<attribute id=\"IsIdentified\" value=\"1\" type=\"4\" />" +
+                                $"<attribute id=\"ItemType\" value=\"{ic.Value.Item.ItemType}\" type=\"22\" />" +
+                                $"<attribute id=\"Durability\" value=\"{ic.Value.Item.Stats.Durability}\" type=\"4\" />" +
+                                $"<attribute id=\"DurabilityCounter\" value=\"{ic.Value.Item.Stats.DurabilityCounter}\" type=\"4\" />" +
+                                $"<attribute id=\"RepairDurabilityPenalty\" value=\"{ic.Value.Item.Stats.RepairDurabilityPenalty}\" type=\"4\" />" +
+                                "<attribute id=\"CustomRequirements\" value=\"False\" type=\"19\" />" +
+                                $"<attribute id=\"Level\" value=\"{ic.Value.Item.Stats.Level}\" type=\"4\" />" +
+                                $"<attribute id=\"Charges\" value=\"{ic.Value.Item.Stats.Charges}\" type=\"4\" />" +
+                                "<children><node id=\"PermanentBoost\"><attribute id=\"HasReflection\" value=\"False\" type=\"19\" /><children><node id=\"Abilities\" /></children></node></children>" +
+                                "</node>";
+                            itemNode.SelectSingleNode("children").AppendChild(statsFrag);
+                            statsNode = itemNode.SelectSingleNode("children/node [@id='Stats']");
+
+                            // Equipment needs an item-level MaxDurabilityPatchCheck or the new
+                            // durability has no ceiling in-game. Add it if it's missing.
+                            if (itemNode.SelectSingleNode("attribute [@id='MaxDurabilityPatchCheck']") == null)
+                            {
+                                var maxDurFrag = doc.CreateDocumentFragment();
+                                maxDurFrag.InnerXml =
+                                    "<attribute id=\"MaxDurabilityPatchCheck\" value=\"100\" type=\"4\" />";
+                                var maxVit = itemNode.SelectSingleNode("attribute [@id='MaxVitalityPatchCheck']");
+                                if (maxVit != null)
+                                    itemNode.InsertAfter(maxDurFrag, maxVit);
+                                else
+                                    itemNode.InsertBefore(maxDurFrag, itemNode.SelectSingleNode("children"));
+                            }
+                        }
 
                         statsNode.SelectSingleNode("attribute [@id='Durability']").Attributes[1].Value =
                             ic.Value.Item.Stats.Durability;
@@ -536,6 +572,35 @@ namespace D_OS_Save_Editor
                     string stats = ic.Value.ItemTemplate.Stats;
                     string empSlot = ic.Key.ToString();
                     string amount = ic.Value.ItemTemplate.Amount.ToString();
+                    string itemType = ic.Value.ItemTemplate.ItemRarity.ToString();
+
+                    // Weapons and armor carry a durability/Stats block. Mirror the verified
+                    // schema from a real save item so added equipment comes in with full
+                    // durability and is durability/rarity-editable after the file is reopened.
+                    // Non-equipment items get no Stats node (they don't have one in-game).
+                    bool isEquipment = ic.Value.ItemTemplate.ItemSort == ItemSortType.Weapon ||
+                                       ic.Value.ItemTemplate.ItemSort == ItemSortType.Armor;
+                    string maxDurabilityAttr = isEquipment
+                        ? @"<attribute id=""MaxDurabilityPatchCheck"" value=""100"" type=""4"" />"
+                        : "";
+                    string statsNodeXml = isEquipment
+                        ? $@"<node id=""Stats"">
+			                                        <attribute id=""IsIdentified"" value=""1"" type=""4"" />
+			                                        <attribute id=""ItemType"" value=""{itemType}"" type=""22"" />
+			                                        <attribute id=""Durability"" value=""100"" type=""4"" />
+			                                        <attribute id=""DurabilityCounter"" value=""8"" type=""4"" />
+			                                        <attribute id=""RepairDurabilityPenalty"" value=""0"" type=""4"" />
+			                                        <attribute id=""CustomRequirements"" value=""False"" type=""19"" />
+			                                        <attribute id=""Level"" value=""1"" type=""4"" />
+			                                        <attribute id=""Charges"" value=""0"" type=""4"" />
+			                                        <children>
+				                                        <node id=""PermanentBoost"">
+					                                        <attribute id=""HasReflection"" value=""False"" type=""19"" />
+					                                        <children><node id=""Abilities"" /></children>
+				                                        </node>
+			                                        </children>
+		                                        </node>"
+                        : "";
 
                     string rawXml = $@"<node id=""Item"">
 	                                        <attribute id=""Translate"" value=""0 0 0"" type=""12"" />
@@ -546,7 +611,7 @@ namespace D_OS_Save_Editor
 	                                        <attribute id=""Global"" value=""True"" type=""19"" />
 	                                        <attribute id=""Velocity"" value=""0 0 0"" type=""12"" />
 	                                        <attribute id=""GoldValueOverwrite"" value=""-1"" type=""4"" />
-	                                        <attribute id=""UnsoldGenerated"" value=""True"" type=""19"" />
+	                                        <attribute id=""UnsoldGenerated"" value=""False"" type=""19"" />
 	                                        <attribute id=""IsKey"" value=""False"" type=""19"" />
 	                                        <attribute id=""TreasureGenerated"" value=""False"" type=""19"" />
 	                                        <attribute id=""CurrentTemplate"" value=""{mapKey}"" type=""22"" />
@@ -565,11 +630,13 @@ namespace D_OS_Save_Editor
 	                                        <attribute id=""Vitality"" value=""-1"" type=""4"" />
 	                                        <attribute id=""LifeTime"" value=""0"" type=""6"" />
 	                                        <attribute id=""owner"" value=""67174791"" type=""5"" />
-	                                        <attribute id=""ItemType"" value=""Common"" type=""22"" />
+	                                        <attribute id=""ItemType"" value=""{itemType}"" type=""22"" />
 	                                        <attribute id=""MaxVitalityPatchCheck"" value=""-1"" type=""4"" />
+	                                        {maxDurabilityAttr}
 	                                        <children>
 		                                        <node id=""ItemMachine"" /><node id=""VariableManager"" />
 		                                        <node id=""StatusManager"" />
+		                                        {statsNodeXml}
 	                                        </children>
                                         </node>";
                     
@@ -588,6 +655,19 @@ namespace D_OS_Save_Editor
 
                     if (lastFiltered != null && imported != null)
                     {
+                        // "owner" is the owning character's handle and is the same for every
+                        // item in a given inventory. The template above hardcodes one value,
+                        // which is wrong for any character it doesn't happen to match. Copy the
+                        // owner from an existing item in this same inventory so the added item
+                        // belongs to the right character.
+                        var siblingOwner = lastFiltered.SelectSingleNode("attribute [@id='owner']")?.Attributes[1]?.Value;
+                        if (siblingOwner != null)
+                        {
+                            var ownerAttr = imported.SelectSingleNode("attribute [@id='owner']");
+                            if (ownerAttr != null)
+                                ownerAttr.Attributes[1].Value = siblingOwner;
+                        }
+
                         lastFiltered.ParentNode.InsertAfter(imported, lastFiltered);
                     }
 
