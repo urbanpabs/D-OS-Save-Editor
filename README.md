@@ -4,7 +4,7 @@ A save editor for **Divinity: Original Sin – Enhanced Edition**.
 
 > ⚠️ This editor only works for *Divinity: Original Sin – Enhanced Edition*. Do **not** use it for the original *Divinity: Original Sin* or for *Divinity: Original Sin 2*.
 
-This is a fork of [AnthonyZJiang/D-OS-Save-Editor](https://github.com/AnthonyZJiang/D-OS-Save-Editor) with a number of fixes and new features (see [Changes in this fork](#changes-in-this-fork)).
+This is a fork of [Se7enthSeal/D-OS-Save-Editor](https://github.com/Se7enthSeal/D-OS-Save-Editor), which is itself based on the original [AnthonyZJiang/D-OS-Save-Editor](https://github.com/AnthonyZJiang/D-OS-Save-Editor), with a number of fixes and new features (see [Changes in this fork](#changes-in-this-fork)).
 
 ---
 
@@ -80,3 +80,4 @@ Releases are built and published automatically by the [`Release` GitHub Actions 
 
 - [Norbyte](https://github.com/Norbyte) for [LSLib / LSTools](https://github.com/Norbyte/lslib).
 - [AnthonyZJiang](https://github.com/AnthonyZJiang) for the original save editor.
+- [Se7enthSeal](https://github.com/Se7enthSeal) for the fork this build is based on.
