@@ -237,6 +237,9 @@
     <Content Include="ItemTemplates\Equipment.lsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+     <Content Include="ItemTemplates\Armor.lsx">
+     <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+   </Content>
     <Content Include="ItemTemplates\Loot.lsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
