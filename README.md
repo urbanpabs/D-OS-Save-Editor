@@ -76,6 +76,12 @@ Releases are built and published automatically by the [`Release` GitHub Actions 
 
 ---
 
+## Contributors
+
+- [urbanpabs](https://github.com/urbanpabs) — maintainer of this fork (in-game item persistence, rarity/durability editing, crash fixes, release automation, docs)
+
+Contributions welcome — open an issue or pull request.
+
 ## Credits
 
 - [Norbyte](https://github.com/Norbyte) for [LSLib / LSTools](https://github.com/Norbyte/lslib).
