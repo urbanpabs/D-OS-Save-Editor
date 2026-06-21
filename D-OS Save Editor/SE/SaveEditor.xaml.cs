@@ -204,6 +204,18 @@ namespace D_OS_Save_Editor
             ShowContent(PlayerSelectionComboBox.SelectedIndex);
         }
 
+        private void MainTabControl_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // Only react to the TabControl's own tab changes, not inner selectors bubbling up.
+            if (!ReferenceEquals(e.OriginalSource, MainTabControl))
+                return;
+
+            // Refresh the inventory list when it becomes active so queued item
+            // additions made on the Add Items tab show up immediately.
+            if (InventoryTabItem.IsSelected)
+                InventoryTab?.UpdateForm();
+        }
+
         private async void SaveButton_OnClick(object sender, RoutedEventArgs e)
         {
             SaveButton.IsEnabled = false;

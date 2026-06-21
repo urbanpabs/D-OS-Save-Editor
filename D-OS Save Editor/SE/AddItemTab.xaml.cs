@@ -24,6 +24,11 @@ namespace D_OS_Save_Editor
         private List<ItemTemplate> _AddedItems;
         private ICollectionView _itemsView;
 
+        /// <summary>
+        /// Rarity options for the per-item picker (bound from XAML via x:Static).
+        /// </summary>
+        public static readonly Array RarityValues = Enum.GetValues(typeof(Item.ItemRarityType));
+
         public Player Player
         {
             get => _player;
@@ -312,6 +317,7 @@ namespace D_OS_Save_Editor
                 {
                     string slot = getEmptySlot(_player);
                     ItemTemplate temp = new ItemTemplate(i.Name,i.Description,i.TemplateKey,i.MaxStack,i.Stats,i.Amount);
+                    temp.ItemRarity = i.ItemRarity;
                     ItemChange change = new ItemChange(temp,ChangeType.Add);
                     _player.ItemChanges.Add(slot,change);
                 

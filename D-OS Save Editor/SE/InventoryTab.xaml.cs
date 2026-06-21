@@ -18,6 +18,12 @@ namespace D_OS_Save_Editor
     {
         private Player _player;
 
+        /// <summary>
+        /// Tag used to mark list rows that represent queued (not-yet-saved) item additions.
+        /// These rows are display-only and are not backed by an entry in Player.Items.
+        /// </summary>
+        private const string PendingAddTag = "PendingAdd";
+
         private Brush DefaultTextBoxBorderBrush { get; }
         private Brush[] _itemRarityColor =
             {Brushes.Black, Brushes.ForestGreen, Brushes.DodgerBlue, Brushes.BlueViolet, Brushes.DeepPink, Brushes.Gold, Brushes.DimGray};
@@ -51,6 +57,21 @@ namespace D_OS_Save_Editor
                     Tag = i.ItemSort,
                     Foreground = _itemRarityColor[(int)i.ItemRarity]
                 });
+
+            // show queued (not-yet-saved) item additions so they're visible this session.
+            // These rows are display-only; their index is past the end of Player.Items.
+            foreach (var ic in Player.ItemChanges)
+            {
+                if (ic.Value.ChangeType != ChangeType.Add || ic.Value.ItemTemplate == null)
+                    continue;
+                ItemsListBox.Items.Add(new ListBoxItem
+                {
+                    Content = $"{ic.Value.ItemTemplate.Name}  (pending add — {ic.Value.ItemTemplate.ItemRarity})",
+                    Tag = PendingAddTag,
+                    Foreground = Brushes.Gray,
+                    FontStyle = FontStyles.Italic
+                });
+            }
 
             // check filter
             foreach (var i in ShowWrapPanel.Children)
@@ -95,6 +116,12 @@ namespace D_OS_Save_Editor
             var lb = sender as ListBox;
             if (lb.SelectedIndex < 0)
                 return;
+            // pending-add rows live past the end of Player.Items and aren't editable here
+            if (lb.SelectedIndex >= Player.Items.Length)
+            {
+                DisableAllItemControls();
+                return;
+            }
             var item = Player.Items[lb.SelectedIndex];
 
 
@@ -145,11 +172,15 @@ namespace D_OS_Save_Editor
             LockLevelTextBox.Text = item.LockLevel;
             VitalityTextBox.Text = item.Vitality;
             MaxVitalityPatchCheckTextBox.Text = item.MaxVitalityPatchCheck;
-            DurabilityTextBox.Text = item.Stats?.Durability ?? "";
-            DurabilityCounterTextBox.Text = item.Stats?.DurabilityCounter ?? "";
+            // For equipment that has no Stats node yet, durability editing is still allowed
+            // (a Stats node is synthesized on apply). Pre-fill sensible defaults so the
+            // fields aren't blank — a blank durability would otherwise fail validation.
+            var canEditStats = allowedChanges.Contains(nameof(item.Stats));
+            DurabilityTextBox.Text = item.Stats?.Durability ?? (canEditStats ? "100" : "");
+            DurabilityCounterTextBox.Text = item.Stats?.DurabilityCounter ?? (canEditStats ? "8" : "");
             MaxDurabilityPatchCheckTextBox.Text = item.MaxDurabilityPatchCheck;
-            RepairDurabilityPenaltyTextBox.Text = item.Stats?.RepairDurabilityPenalty ?? "";
-            LevelTextBox.Text = item.Stats?.Level ?? "";
+            RepairDurabilityPenaltyTextBox.Text = item.Stats?.RepairDurabilityPenalty ?? (canEditStats ? "0" : "");
+            LevelTextBox.Text = item.Stats?.Level ?? (canEditStats ? "1" : "");
 
             // combobox
             RarityComboBox.SelectedIndex = (int) item.ItemRarity;
@@ -173,6 +204,26 @@ namespace D_OS_Save_Editor
             }
         }
         
+        /// <summary>
+        /// Disable every per-item editor control. Used when a non-editable row
+        /// (e.g. a queued pending-add) is selected.
+        /// </summary>
+        private void DisableAllItemControls()
+        {
+            VitalityTextBox.IsEnabled = false;
+            MaxVitalityPatchCheckTextBox.IsEnabled = false;
+            RarityComboBox.IsEnabled = false;
+            AmountTextBox.IsEnabled = false;
+            LockLevelTextBox.IsEnabled = false;
+            BoostsListBox.IsEnabled = false;
+            DurabilityTextBox.IsEnabled = false;
+            MaxDurabilityPatchCheckTextBox.IsEnabled = false;
+            DurabilityCounterTextBox.IsEnabled = false;
+            RepairDurabilityPenaltyTextBox.IsEnabled = false;
+            LevelTextBox.IsEnabled = false;
+            PermBoostsListBox.IsEnabled = false;
+        }
+
         private void CheckboxEventSetter_OnClick(object sender, RoutedEventArgs e)
         {
             var ckb = sender as CheckBox;
@@ -183,6 +234,7 @@ namespace D_OS_Save_Editor
             {
                 foreach (ListBoxItem i in ItemsListBox.Items)
                 {
+                    if (!(i.Tag is ItemSortType)) continue; // skip pending-add rows
                     if ((ItemSortType) i.Tag == ItemSortType.Item || (ItemSortType) i.Tag == ItemSortType.Unique ||
                         (ItemSortType) i.Tag == ItemSortType.Other)
                         i.Visibility = ckb.IsChecked == true && !IsFilteredOutByText(i.Content as string) ? Visibility.Visible:Visibility.Collapsed;
@@ -192,6 +244,7 @@ namespace D_OS_Save_Editor
             {
                 foreach (ListBoxItem i in ItemsListBox.Items)
                 {
+                    if (!(i.Tag is ItemSortType)) continue; // skip pending-add rows
                     if ((ItemSortType)i.Tag == (ItemSortType)ckb.Tag)
                         i.Visibility = ckb.IsChecked == true && !IsFilteredOutByText(i.Content as string) ? Visibility.Visible : Visibility.Collapsed;
                 }
@@ -236,7 +289,7 @@ namespace D_OS_Save_Editor
 
         private void ApplyChangesButton_OnClick(object sender, RoutedEventArgs e)
         {
-            if (ItemsListBox.SelectedIndex < 0)
+            if (ItemsListBox.SelectedIndex < 0 || ItemsListBox.SelectedIndex >= Player.Items.Length)
                 return;
 
             try
@@ -261,6 +314,14 @@ namespace D_OS_Save_Editor
 
                 if (allowedChanges.Contains(nameof(item.Stats)))
                 {
+                    // Equipment may not have a Stats node yet; create one so its durability
+                    // can be set. The save-time writer creates the matching XML node.
+                    if (item.Stats == null)
+                        item.Stats = new Item.StatsNode
+                        {
+                            Charges = "0",
+                            PermanentBoost = new Dictionary<string, string>()
+                        };
                     item.Stats.Durability = DurabilityTextBox.Text;
                     item.Stats.DurabilityCounter = DurabilityCounterTextBox.Text;
                     item.Stats.RepairDurabilityPenalty = RepairDurabilityPenaltyTextBox.Text;
@@ -271,19 +332,21 @@ namespace D_OS_Save_Editor
                 {
                     if (item.Generation == null)
                     {
-                        //TODO if Item.Stats is null, an error will occur later on when writing xml because Geneartion.Level is taken from Stats.Level.
-                        //Since Item.Stats == null is not likely to be possible, let's handle it later on if we have an report of this case.
+                        // A modifier lives in the Generation node, and its Level is taken from
+                        // Stats.Level. Some equipment has no Stats node yet; synthesize one
+                        // (verified in-game schema, full durability) so the item can take a
+                        // modifier and becomes durability-editable after the file is reopened.
                         if (item.Stats == null)
                         {
-                            var xmlSerializer = new XmlSerializer(item.GetType());
-
-                            using (var sw = new StringWriter())
+                            item.Stats = new Item.StatsNode
                             {
-                                xmlSerializer.Serialize(sw, item);
-                                var er = new ErrorReporting("It is not possible to add modifier to this item yet. No changes have been applied.", $"Item.Stats Null. Cannot add item modifiers.\n\nItem XML:\n{sw}", null);
-                                er.ShowDialog();
-                            }
-                            return;
+                                Durability = "100",
+                                DurabilityCounter = "8",
+                                RepairDurabilityPenalty = "0",
+                                Level = "1",
+                                Charges = "0",
+                                PermanentBoost = new Dictionary<string, string>()
+                            };
                         }
                         item.Generation = new Item.GenerationNode(item.StatsName, "0");
                     }
@@ -342,10 +405,17 @@ namespace D_OS_Save_Editor
             switch (((MenuItem)sender).Header)
             {
                 case "Add":
+                    if (ItemsListBox.SelectedIndex < 0 || ItemsListBox.SelectedIndex >= Player.Items.Length)
+                    {
+                        MessageBox.Show("Select an existing item in the list first, then add a modifier. " +
+                            "(Pending added items can't be modified until you save and reopen the file.)",
+                            "No item selected", MessageBoxButton.OK, MessageBoxImage.Information);
+                        break;
+                    }
                     // try pre-determine equipment type
                     var predictedKeyword = "";
                     var boostsString= BoostsListBox.Items.Cast<string>().Aggregate("", (current, s) => current + s);
-                    boostsString += Player.Items[ItemsListBox.SelectedIndex].StatsName.ToLower();
+                    boostsString += (Player.Items[ItemsListBox.SelectedIndex].StatsName ?? "").ToLower();
 
                     if (boostsString!="")
                     foreach (var s in DataTable.GenerationBoostsFilterNames)

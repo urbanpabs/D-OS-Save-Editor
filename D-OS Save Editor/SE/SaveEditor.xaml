@@ -98,7 +98,7 @@
             <Button x:Name="CancelButton" Content="Cancel" VerticalAlignment="Center" Padding="10,2" Margin ="10,20,20,0" Width="60" IsCancel="True"/>
             <Button Style="{StaticResource BugReportButtonStyle}" Width="20" Visibility="Collapsed" HorizontalAlignment="Right" Margin="0,20,20,0" Padding="0" VerticalAlignment="Top" Click="BugReportButton_OnClick" ToolTip="Bug report"/>
         </StackPanel>
-        <TabControl Grid.Row="2" Margin="20" Grid.ColumnSpan="2">
+        <TabControl x:Name="MainTabControl" Grid.Row="2" Margin="20" Grid.ColumnSpan="2" SelectionChanged="MainTabControl_OnSelectionChanged">
             <TabItem Header="Stats">
                 <local:StatsTab x:Name="StatsTab" Margin="10"/>
             </TabItem>
@@ -117,7 +117,7 @@
             <TabItem Header="Talents">
                 <local:TalentTab x:Name="TalentTab" Margin="10"/>
             </TabItem>
-            <TabItem Header="Inventory">
+            <TabItem Header="Inventory" x:Name="InventoryTabItem">
                 <local:InventoryTab x:Name="InventoryTab" Margin="10"/>
             </TabItem>
             <TabItem Header="Add Items">

@@ -124,7 +124,7 @@
                             <DataTemplate>
                             <Grid Margin="4">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="290" SharedSizeGroup="ItemCol"/>
+                                        <ColumnDefinition Width="160" SharedSizeGroup="ItemCol"/>
                                         <ColumnDefinition Width="*" SharedSizeGroup="BtnCol"/>
                                     </Grid.ColumnDefinitions>
 
@@ -134,12 +134,17 @@
                                        TextTrimming="CharacterEllipsis"
                                        VerticalAlignment="Center"/>
 
-                            <StackPanel Grid.Column="2"
+                            <StackPanel Grid.Column="1"
                                 Orientation="Horizontal"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Center"
                                 >
 
+                                    <ComboBox Width="90" Margin="0,0,8,0"
+                                              VerticalAlignment="Center"
+                                              ToolTip="Rarity of the added item"
+                                              ItemsSource="{x:Static local:AddItemTab.RarityValues}"
+                                              SelectedItem="{Binding ItemRarity, Mode=TwoWay}"/>
                                     <Button Content="X" Width="25" Height="25" Click="ZeroButton_Click"/>
                                     <RepeatButton  Content="-" Width="25" Height="25" Click="DecrementButton_Click" 
                                                    Interval="20"           
