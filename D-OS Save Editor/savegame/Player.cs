@@ -282,12 +282,21 @@ namespace D_OS_Save_Editor
 
         private static string GetObjectString(object obj, string msg ="")
         {
-            var xmlSerializer = new XmlSerializer(obj.GetType());
             string s;
-            using (var sw = new StringWriter())
+            try
             {
-                xmlSerializer.Serialize(sw, obj);
-                s = sw.ToString();
+                var xmlSerializer = new XmlSerializer(obj.GetType());
+                using (var sw = new StringWriter())
+                {
+                    xmlSerializer.Serialize(sw, obj);
+                    s = sw.ToString();
+                }
+            }
+            catch (Exception serEx)
+            {
+                // Some types (e.g. Item, which contains a Dictionary) can't be reflected by
+                // XmlSerializer. Don't let that failure mask the real error being reported.
+                s = $"<could not serialize {obj?.GetType().Name}: {serEx.Message}>";
             }
 
             return $"{(msg == "" ? "" : $"{msg}\n\n")}Serialized item Object:\n{s}";
